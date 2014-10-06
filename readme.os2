@@ -1,0 +1,211 @@
+
+	   日本語形態素解析システム「茶筌」v1.51  OS/2用パッチ
+
+			  Fri, 03 Jul 1998
+
+		 清水 和佳 <kshimz@dd.iij4u.or.jp>
+		<URL:http://www.dd.iij4u.or.jp/~kshimz/>
+
+
+[はじめに]
+
+      これは、奈良先端科学技術大学院大学 松本研究室で開発された、日本語形態
+    素解析システム「茶筌」 v1.51 を、OS/2 上で使用するために emx gcc でコン
+    パイルできるようにした patch です。
+
+
+[この patch オリジナルな機能]
+
+    ・クライアントモードおよびスタンドアロンモードで、日本語文字コードと
+      して SJIS (a.k.a MS漢字) を扱うことが可能である。
+
+    ・入力コードは、できるだけ自動判別するが、自動判別に失敗することもあり
+      得るので、オプション (-i) で指定することも可能になっている。
+      オプションは、-iSJIS / -iJIS / -iEUC という具合に指定する。
+
+    ・出力コードは、オプション (-o) で指定する。デフォルトは EUC である。
+      SJIS で出力させる場合は、-oSJIS と指定する。
+
+    ・コマンドモードでは SJIS が入力されることを想定し、必ず SJIS → EUC
+      変換が実行される。
+
+
+[含まれるファイル]
+
+    readme.os2                        この文書
+    chasen-1.51-os2-sjis.patch        パッチ本体
+    test.sjis                         テスト用のテキストファイル (SJIS)
+    test.jis                          テスト用のテキストファイル (JIS)
+    test.euc                          テスト用のテキストファイル (EUC)
+    GPL.txt                           GNU 一般公有使用許諾書
+
+
+[chasen.exe の作成に必要なファイル]
+
+    茶筌 v1.51 for OS/2 を作成するには、以下のアーカイブ (に含まれるファイル)
+    が必要です。
+
+    ・chasen-sys1.51-dic1.5.tar.gz    辞書を含む chasen 1.51 のアーカイブ
+
+    これは、以下の URL から取得することができます。(1,244,055 bytes)
+
+    ・http://cactus.aist-nara.ac.jp/lab/nlt/chasen/package/chasen-sys1.51-dic1.5.tar.gz
+    ・ftp://ftp.aist-nara.ac.jp/pub/nlp/tools/chasen/chasen-sys1.51-dic1.5.tar.gz
+
+
+[必要なツール]
+
+    OS/2 の emx gcc の開発環境が必須です。
+
+    OS/2 Magazine No.23 に、emx gcc 開発環境全般に関する特集記事が掲載されて
+    いるので、参照されるといいでしょう。
+
+    オンライン情報誌 PS FEELの「ゴーゴー! OS/2」の特集、「emx で UNIX ライク
+    な OS/2 環境を作ろう」で emx の導入方法が説明されています。以下の URL を
+    参照してください。
+
+         http://www.psfeel.or.jp/warp/gogo/emx/
+
+
+    その他に、以下のツールを使用します。これらを path の通ったディレクトリに
+    置いてください。すべて OS/2 Magazine の付録 CD-ROM の \os2mag\unix 以下、
+    または ftp://hobbes.nmsu.edu/ , ftp://ftp.leo.org/ 等の匿名 ftp サイトに
+    あるハスです。
+
+    ・KSH527RT.ZIP    に含まれる sh.exe
+
+    ・GNUMAKE.ZIP     に含まれる make.exe
+    ・GNUPATCH.ZIP    に含まれる patchos2.exe
+    ・GNUFUTIL.ZIP    に含まれる cp.exe / rm.exe / mv.exe
+    ・GTAR245.ZIP     に含まれる tar.exe
+
+    ・YACC19.ZIP      に含まれる yacc.exe
+
+
+    また、環境設定ファイル (.chasenrc) は EUC で書かれているため、編集する
+    場合は EUC を扱えるエディタ (PMMule や Future Wave Editor など) が必要
+    です。
+
+
+[コンパイル (バイナリの作成) 方法]
+
+  1. ソースを展開し、パッチを当てる
+
+    作業ドライブ上の適当なディレクトリに、
+
+    ・chasen-sys1.51-dic1.5.tar.gz
+
+    を展開します。(ここでは、F: ドライブを想定しています。)
+
+      [F:] cd temp
+      [F:\temp] tar -xvzf  chasen-sys1.51-dic1.5.tar.gz
+
+    ディレクトリ付きで展開されるので、chasen1.51 ディレクトリに移ります。
+
+      [F:\temp] cd chasen1.51
+      [F:\temp\chasen1.51]
+
+    このディレクトリに chasen-1.51-os2-sjis.patch を置き、パッチを当てます。
+
+      [F:\temp\chasen1.51] patchos2 < chasen-1.51-os2-sjis.patch
+
+
+  2. make する
+
+    パッチ当てが正常に終了したら、そのまま make を実行します。
+    正常に (Error を出さず) 終了したら、続けて make dic を実行します。
+
+      [F:\temp\chasen1.51] make
+      [F:\temp\chasen1.51] make dic
+
+    前者はプログラム (chasen.exe) を作成します。
+    プログラムは、chasen1.51\chasen ディレクトリに作成されます。
+
+    後者は辞書ファイル類を作成します。作成される辞書ファイルが大きいので、
+    ここの処理には Pentium 166MHz マシンで、4分弱かかります。
+    辞書ファイル類は、chasen1.51\dic ディレクトリに作成されます。
+
+
+[動作環境の設定]
+
+  1. プログラム (chasen.exe) を適当なディレクトリに置く
+
+    できるだけ path の通ったディレクトリに置きましょう。
+    (ここでは、d:\bin を想定しています。)
+
+      [F:\temp\chasen1.51] copy .\chasen\chasen.exe  d:\bin
+
+
+  2. 辞書ファイル・文法ファイル類を適当なディレクトリに置く
+
+    /usr/local/lib/chasen/dic がデフォルト値ですが、h:\chasen あるいは
+    c:\chasen\dic 等でも構いません。ここへ、chasen1.51\dic にあるすべての
+    ファイルを置きます。(ここでは、d:\chasen\dic を想定しています。)
+
+      [F:\temp\chasen1.51] mkdir d:\chasen
+      [F:\temp\chasen1.51] mkdir d:\chasen\dic
+      [F:\temp\chasen1.51] copy .\dic\*  d:\chasen\dic
+
+
+  3. 環境設定ファイルを作成する
+
+    chasen1.51 にある chasenrc を、環境変数 HOME で指示されるディレクトリ
+    へ .chasenrc という名前で複写します。
+    (ここでは、環境変数 HOME の設定内容として、d:\home を想定しています。)
+    
+      [F:\temp\chasen1.51] copy  chasenrc  d:\home\.chasenrc
+
+    複写したら、.chasenrc を EUC コードを扱うことができるエディタで修正し
+    ます。文法ファイル・PATDIC の位置を動作環境に合わせてください。ここま
+    での手順通りの環境の場合、以下のようにします。他の部分は、デフォルト
+    のままで動きます。詳細はマニュアルを読んでください。
+
+      (文法ファイル
+              d:/chasen/dic
+      )
+
+      (PATDIC
+              d:/chasen/dic/chadic
+      )
+
+
+  4. 動作確認
+
+    テスト用のファイルを読み込ませます。
+
+      [D:\] chasen -oSJIS test.sjis
+      これ        これ        これ        名詞形態指示詞
+      は          は          は          副助詞
+      茶筌        ちゃせん    茶筌        普通名詞
+      の          の          の          名詞接続助詞
+      パッチ      ぱっち      パッチ      普通名詞
+      です        です        だ          判定詞         判定詞         デス列基本形
+      。          。          。          句点
+      EOS
+      
+      [D:\]
+
+   と出力されれば正常です。
+
+
+[マニュアルについて]
+
+    茶筌の配布パッケージに含まれるマニュアルは tex および eps 形式ですが、
+    これらを html 形式にしたものが以下の URL にあります。
+
+      http://cl.aist-nara.ac.jp/lab/nlt/chasen/manual/manual.html
+
+    また、茶筌の公式Webページは、以下の URL にあります。
+
+      http://cl.aist-nara.ac.jp/lab/nlt/chasen.html
+
+
+[再配布について]
+
+    このパッチは、GPL2 に従って配布します。
+
+    このままの形での再配布は自由ですが、中身を改変したものの再配布は、オリ
+    ジナルとの差分を添付する形でお願いします。
+     (GPL.txt も参照してください)。
+
+以上.

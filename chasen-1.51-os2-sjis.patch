@@ -1,0 +1,1145 @@
+*** ../chasen1.51/Makefile	Mon Jul 28 21:55:58 1997
+--- ./Makefile	Tue Jun 16 12:34:10 1998
+***************
+*** 10,19 ****
+  #
+  
+  # --- commands & flags
+! #CC	 = gcc
+! #CFLAGS	 = -O
+! LDFLAGS  =
+! #YACC	 = yacc            # bison -y
+  RM       = rm -f
+  CP       = cp
+  
+--- 10,19 ----
+  #
+  
+  # --- commands & flags
+! CC	 = gcc
+! CFLAGS	 = -O -Zmts
+! LDFLAGS  = -lwrap -s -lm
+! YACC	 = yacc            # bison -y
+  RM       = rm -f
+  CP       = cp
+  
+***************
+*** 24,30 ****
+  DICDIR = $(LIBDIR)/dic
+  
+  # --- user definitions
+! #NO_MMAP = -DNO_MMAP        # your OS does not have mmap()
+  #CHASEN_PORT = -DCHASEN_PORT=31000
+  
+  #VGRAM   = -DVGRAM          # variable-gram support
+--- 24,30 ----
+  DICDIR = $(LIBDIR)/dic
+  
+  # --- user definitions
+! NO_MMAP = -DNO_MMAP        # your OS does not have mmap()
+  #CHASEN_PORT = -DCHASEN_PORT=31000
+  
+  #VGRAM   = -DVGRAM          # variable-gram support
+***************
+*** 37,43 ****
+  DICVER   = 1.5
+  RC       = chasenrc
+  CONFIG_H = lib/config.h
+! SHELL    = /bin/sh
+  DEFS     = $(KOCHA) $(VGRAM) $(SJIS)
+  MAKE     = make
+  MFLAGS   = CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" RM="$(RM)" \
+--- 37,43 ----
+  DICVER   = 1.5
+  RC       = chasenrc
+  CONFIG_H = lib/config.h
+! SHELL    = sh.exe
+  DEFS     = $(KOCHA) $(VGRAM) $(SJIS)
+  MAKE     = make
+  MFLAGS   = CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" RM="$(RM)" \
+*** ../chasen1.51/chasen/Makefile	Mon Jul  7 08:15:30 1997
+--- ./chasen/Makefile	Mon Jun 15 20:09:56 1998
+***************
+*** 4,10 ****
+  #
+  
+  CP      = cp
+! SHELL   = /bin/sh
+  BINDIR  = /usr/local/bin
+  RM      = rm -f
+  
+--- 4,10 ----
+  #
+  
+  CP      = cp
+! SHELL   = sh.exe
+  BINDIR  = /usr/local/bin
+  RM      = rm -f
+  
+***************
+*** 13,19 ****
+  CHALIB = $(LIBDIR)/libchasen.a
+  CHASEN = chasen
+  OBJS   = $(CHASEN).o client.o server.o
+! EXES   = $(CHASEN)
+  NETLIBS = netlibs
+  
+  .c.o:
+--- 13,19 ----
+  CHALIB = $(LIBDIR)/libchasen.a
+  CHASEN = chasen
+  OBJS   = $(CHASEN).o client.o server.o
+! EXES   = $(CHASEN).exe
+  NETLIBS = netlibs
+  
+  .c.o:
+***************
+*** 24,37 ****
+  $(NETLIBS): Makefile
+  	./chklibs.sh "$(CC)" "$(RM)" nsl socket > $(NETLIBS)
+  
+! $(CHASEN): $(OBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(CHALIB) `cat $(NETLIBS)`
+  
+  chasmpl: chasmpl.o $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ chasmpl.o $(CHALIB) `cat $(NETLIBS)`
+  
+  install: all
+! 	$(CP) $(CHASEN) $(BINDIR)
+  
+  clean:
+  	$(RM) $(NETLIBS) $(EXES) *.o core a.out
+--- 24,37 ----
+  $(NETLIBS): Makefile
+  	./chklibs.sh "$(CC)" "$(RM)" nsl socket > $(NETLIBS)
+  
+! $(EXES): $(OBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(CHALIB) `cat $(NETLIBS)`
+  
+  chasmpl: chasmpl.o $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ chasmpl.o $(CHALIB) `cat $(NETLIBS)`
+  
+  install: all
+! 	$(CP) $(EXES) $(BINDIR)
+  
+  clean:
+  	$(RM) $(NETLIBS) $(EXES) *.o core a.out
+*** ../chasen1.51/chasen/chasen.c	Mon Jul 28 16:58:44 1997
+--- ./chasen/chasen.c	Fri Jun 26 20:13:14 1998
+***************
+*** 119,124 ****
+--- 119,129 ----
+  	"  -F format      show morpheme with formatted output\n",
+  	"  -Fh            print help of -F option\n",
+  	"\n",
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	"  -i charset     input Japanese Character Set [ EUC | JIS | SJIS ]\n",
++ 	"  -o charset     output Japanese Character Set [ EUC | SJIS ]\n",
++ 	"\n",
++ #endif			/* OS/2 emx gcc */
+  	"  -j             Japanese sentence mode\n",
+  	"  -w width       specify the cost width\n",
+  	"  -C             use command mode\n",
+***************
+*** 209,214 ****
+--- 214,232 ----
+  		exit(0);
+  	    }
+  	    break;
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	  case 'C': /* command mode */
++ 	    strcpy(inpcd, "SJIS");
++ 	    outcd_is_SJIS = 1;
++ 	    break;
++ 	  case 'i': /* input code */
++ 	    strncpy(inpcd, Cha_optarg, 4);
++ 	    break;
++ 	  case 'o': /* output code */
++ 	    if (!(strcasecmp(Cha_optarg, "SJIS")))
++ 	        outcd_is_SJIS = 1;
++ 	    break;
++ #endif			/* OS/2 emx gcc */
+  	  case 'V': cha_version(stderr); exit(0);
+  	  case 'h': usage(stderr); exit(0);
+  	  case '?': usage(stderr); exit(1);
+***************
+*** 290,295 ****
+--- 308,320 ----
+        for (av = argv; *av; av++)
+  	printf("## %d: %s\n", argv-av, *av); }
+  #endif
++ 
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++     if (Cha_server_mode) {   /*  server NOT deals SJIS  */
++ 	    strcpy(inpcd, "EUC");
++ 	    outcd_is_SJIS = 0;
++     }
++ #endif			/* OS/2 emx gcc */
+  
+      if (Cha_server_mode)
+        return chasen_server(argv, chasen_port);
+*** ../chasen1.51/chasen/client.c	Mon Jul 28 16:59:00 1997
+--- ./chasen/client.c	Sat Jun 27 10:42:06 1998
+***************
+*** 53,60 ****
+--- 53,71 ----
+      char line[CHA_INPUT_SIZE];
+      /* if output is stdout or not */
+      int istty = isatty(fileno(stdout));
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++     int isterm;
++ 
++     isterm = _isterm(fileno(ifp));
++ #endif			/* OS/2 emx gcc */
+  
+      while (cha_fgets(line, sizeof(line), ifp) != NULL) {
++ 
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	if ((isterm) && (!(strncmp(line, ".QUIT", 5))))
++ 	   break;
++ #endif			/* OS/2 emx gcc */
++ 
+  	if (line[0] == '.')
+  	  fputc('.', ofp);
+  	fputs(line, ofp);
+***************
+*** 119,124 ****
+--- 130,139 ----
+      Cha_optind = 0;
+      while ((c = cha_getopt_chasen(argv, stderr)) != EOF) {
+  	switch (c) {
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	  case 'i':
++ 	  case 'o':
++ #endif			/* OS/2 emx gcc */
+  	  case 'a':
+  	  case 's':
+  	  case 'D':
+***************
+*** 160,165 ****
+--- 175,184 ----
+  	if (line[0] == '.' && 
+  	    (line[1] == '\n' || line[1] == '\r' && line[2] == '\n'))
+  	  break;
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++         if (outcd_is_SJIS)
++             euc2sjis(line);
++ #endif			/* OS/2 emx gcc */
+  	fputs(line[0] == '.' ? line + 1 : line, stdout);
+  	if (istty)
+  	  fflush(stdout);
+***************
+*** 177,182 ****
+--- 196,204 ----
+  {
+      int status;
+  
++ #ifdef	__EMX__
++     fputs("\n", ofp);
++ #endif	/* __EMX__ */
+      fputs(".\nQUIT\n", ofp);
+      fclose(ofp);
+      while (wait(&status) != pid)
+***************
+*** 238,243 ****
+--- 260,269 ----
+      char *option;
+      FILE *ifp, *ofp;
+  
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++     char tmpstr[10];
++ #endif			/* OS/2 emx gcc */
++ 
+      /* open connection to server */
+      if ((sfd = open_connection(server, port)) < 0)
+        return 1;
+***************
+*** 246,256 ****
+--- 272,296 ----
+      ofp = fdopen(sfd, "w");
+      check_status(ifp, "connection error");
+  
++ #ifdef	__EMX__		/*  chasenrc is wtitten in EUC  */
++     strcpy(tmpstr, inpcd);
++     strcpy(inpcd, "EUC");
++ #endif			/* OS/2 emx gcc */
++ 
+      send_chasenrc(ifp, ofp);
+  
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++     strcpy(inpcd, tmpstr);
++ #endif			/* OS/2 emx gcc */
++ 
+      /* send RUN command with option */
+      option = getopt_client(argv);
+      argv += Cha_optind;
++ 
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++     sjis2euc(option);
++ #endif
++ 
+      fprintf(ofp, "RUN %s\n", option);
+  
+      if ((pid = fork_and_gets(ifp)) < 0)
+*** ../chasen1.51/chasen/server.c	Tue Jul  8 19:04:14 1997
+--- ./chasen/server.c	Fri Jun 26 19:58:50 1998
+***************
+*** 385,391 ****
+--- 385,395 ----
+  {
+      int status;
+  
++ #ifdef	__EMX__   /* __EMX__ */
++     while(waitpid(-1, &status, WNOHANG) > 0)
++ #else  /* !__EMX__ */
+      while(wait3(&status, WNOHANG, NULL) > 0)
++ #endif /* __EMX__ */
+        ;
+      signal(SIGCHLD, sigchld_handler);
+  }
+***************
+*** 409,414 ****
+--- 413,422 ----
+  {
+      int pid, i;
+  
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	int accept_count = 0;
++ #endif
++ 
+      if (chasen_getopt_argv(argv, stderr))
+        return 1;
+      argv += Cha_optind;
+***************
+*** 423,428 ****
+--- 431,437 ----
+      /* daemon initialization */
+      umask(0);
+  
++ #ifndef	__EMX__		/* ! OS/2 emx gcc */
+      if((i = fork()) > 0)
+        return 0;
+      else if(i == -1) {
+***************
+*** 433,438 ****
+--- 442,448 ----
+  
+      if(setsid() == -1)
+        cha_perror("Warning: setsid");
++ #endif			/* ! OS/2 emx gcc */
+  
+      signal(SIGHUP,  SIG_IGN);
+      signal(SIGPIPE, SIG_IGN);
+***************
+*** 460,468 ****
+--- 470,493 ----
+  	if((client_fd = accept(sfd, NULL, NULL)) < 0) {
+  	    if(errno == EINTR)
+  	      continue;
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	    if(errno == EINVAL) {
++ 	        ++accept_count;
++ 	        if(accept_count > 100) {
++ 	            cha_perror("accept");
++ 	            return 1;
++ 	        }
++ 	        _sleep2(100);
++ 	        continue;
++             }
++ #endif
+  	    cha_perror("accept");
+  	    return 1;
+  	}
++ 
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	accept_count = 0;
++ #endif			/* OS/2 emx gcc */
+  
+  	if((pid = fork()) < 0) {
+  	    cha_perror("fork");
+*** ../chasen1.51/dic/Makefile	Mon Jul  7 09:10:58 1997
+--- ./dic/Makefile	Mon Jun 15 20:12:08 1998
+***************
+*** 10,16 ****
+  CONNECT.jm   = JUMAN.connect
+  CONNECT.cha  = chasen.connect
+  CONNECT.vcha = connect.cha
+! SHELL        = /bin/sh
+  LIBDIR       = /usr/local/lib/chasen
+  DICDIR       = $(LIBDIR)/dic
+  MAKEINT      = transdic
+--- 10,16 ----
+  CONNECT.jm   = JUMAN.connect
+  CONNECT.cha  = chasen.connect
+  CONNECT.vcha = connect.cha
+! SHELL        = sh.exe
+  LIBDIR       = /usr/local/lib/chasen
+  DICDIR       = $(LIBDIR)/dic
+  MAKEINT      = transdic
+*** ../chasen1.51/lib/Makefile	Mon Jul  7 17:02:32 1997
+--- ./lib/Makefile	Mon Jun 15 20:10:26 1998
+***************
+*** 3,9 ****
+  # Makefile for chadic (ChaSen dictionary) library
+  #
+  
+! SHELL   = /bin/sh
+  RANLIB	= `./mkranlib.sh`
+  AR      = ar
+  
+--- 3,9 ----
+  # Makefile for chadic (ChaSen dictionary) library
+  #
+  
+! SHELL   = sh.exe
+  RANLIB	= `./mkranlib.sh`
+  AR      = ar
+  
+*** ../chasen1.51/lib/chadic.h	Mon Jul 28 16:57:46 1997
+--- ./lib/chadic.h	Mon Jun 22 16:55:26 1998
+***************
+*** 14,20 ****
+  
+  #include <sys/types.h>
+  #include <sys/stat.h>
+! #ifdef _WIN32
+  #include <io.h>
+  #else
+  #include <sys/file.h>
+--- 14,20 ----
+  
+  #include <sys/types.h>
+  #include <sys/stat.h>
+! #if defined(_WIN32) || defined(__EMX__)
+  #include <io.h>
+  #else
+  #include <sys/file.h>
+***************
+*** 35,41 ****
+  #define         TRUE            (!(FALSE))
+  #endif
+  
+! #ifdef _WIN32
+  #define PATH_DELIMITER  '\\'
+  #else
+  #define PATH_DELIMITER  '/'
+--- 35,41 ----
+  #define         TRUE            (!(FALSE))
+  #endif
+  
+! #if defined(_WIN32) || defined(__EMX__)
+  #define PATH_DELIMITER  '\\'
+  #else
+  #define PATH_DELIMITER  '/'
+***************
+*** 308,313 ****
+--- 308,316 ----
+  extern unsigned char *euc2sjis();
+  extern unsigned char *sjis2euc();
+  extern unsigned char *hankana2zenkana();
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ extern unsigned char *euc2sjis1();
++ #endif
+  
+  /* getopt.c */
+  extern int cha_getopt();
+*** ../chasen1.51/lib/chalib.c	Mon Jul 28 17:21:32 1997
+--- ./lib/chalib.c	Sat Jun 27 10:37:38 1998
+***************
+*** 23,28 ****
+--- 23,33 ----
+  static int opt_show = 'b', opt_form = 'f', opt_ja, opt_cmd;
+  static char *opt_form_string;
+  
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ char inpcd[10];
++ int outcd_is_SJIS = 0;
++ #endif			/* OS/2 emx gcc */
++ 
+  /*
+   *  cha_version()
+   */
+***************
+*** 189,195 ****
+--- 194,204 ----
+      char **mes;
+  
+      for (mes = message; *mes; mes++)
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++       fputs(euc2sjis1(*mes), stdout);
++ #else			/* ! OS/2 emx gcc */
+        fputs(*mes, stdout);
++ #endif			/* ! OS/2 emx gcc */
+  }
+  
+  #if 1
+***************
+*** 225,234 ****
+--- 234,253 ----
+      FILE *of; /* intファイルに書き込む(追加)ためのもの */
+      long new_word_index;
+      char tmpstr[2000];
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++     char none_str[10];
++     int  arglen, j;
++     unsigned char *a;
++ #endif			/* OS/2 emx gcc */
+  
+      arg = comm + 2;
+      chomp(arg);
+  
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ /*    sjis2euc(arg);	*/
++     strcpy(none_str, euc2sjis1("(なし)"));
++ #endif			/* ! OS/2 emx gcc */
++ 
+      switch(comm[0]) {	/* command */
+        case 'V':
+  	cha_version(stdout);
+***************
+*** 243,248 ****
+--- 262,281 ----
+        case 'i':
+  	/* information */
+  	cha_version(stdout);
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	printf("\n%s%d\n",euc2sjis1("コスト幅(内部)        "), Cost_width);
++ 	printf("%s%d\n",euc2sjis1("連接コスト重み(内部)  "),Con_cost_weight);
++ 	printf("%s%d\n",euc2sjis1("形態素コスト重み      "),Mrph_cost_weight);
++ 	printf("%s%s",euc2sjis1("出力フォーマット      "),
++ 	       opt_form_string ? opt_form_string : none_str);
++ 	printf("\n%s\n\t%s\n",euc2sjis1("chasenrcファイル"),get_chasenrc_path());
++ 	printf("%s\n\t%s\n",euc2sjis1("文法ファイル"),get_grammar_dir());
++ 	printf("%s\n",euc2sjis1("辞書ファイル"));
++ 	for(i = 0; pat_filename[i][0]; i++)
++ 	  printf("\t%s\n",pat_filename[i]);
++ 	printf("%s\n\t%s\n",euc2sjis1("動的処理の対象となる辞書"),
++ 	       pat_filename[obj_dic_no]);
++ #else
+  	printf("\nコスト幅(内部)        %d\n",Cost_width);
+  	printf("連接コスト重み(内部)  %d\n",Con_cost_weight);
+  	printf("形態素コスト重み      %d\n",Mrph_cost_weight);
+***************
+*** 255,260 ****
+--- 288,294 ----
+  	  printf("\t%s\n",pat_filename[i]);
+  	printf("動的処理の対象となる辞書\n\t%s\n",
+  	       pat_filename[obj_dic_no]);
++ #endif			/* OS/2 emx gcc */
+  	break;
+        case 'f':
+  	/* 処理対象となる辞書の変更  file name -> dic No. */
+***************
+*** 283,296 ****
+--- 317,338 ----
+  #endif
+  	/* 追加する単語をintファイルに追加 */
+  	sprintf(tmpstr,"%s.int",pat_filename[obj_dic_no]);
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	of = cha_fopen(tmpstr,"ab",1);
++ #else			/* ! OS/2 emx gcc */
+  	of = cha_fopen(tmpstr,"a",1);
++ #endif			/* ! OS/2 emx gcc */
+  	fputs(arg, of);
+  	fputc(0, of);
+  	printf("add [%s] at %ld\n", arg, new_word_index);
+  	fclose(of);
+  	/* 読み込み用のintファイルを一度閉じてまた開く */
+  	fclose(dic_file[obj_dic_no]);
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	dic_file[obj_dic_no] = cha_fopen(tmpstr, "rb", 1);
++ #else			/* ! OS/2 emx gcc */
+  	dic_file[obj_dic_no] = cha_fopen(tmpstr, "r", 1);
++ #endif			/* ! OS/2 emx gcc */
+  	/* マップをやり直してもらうための処理 */
+  #ifndef NO_MMAP
+  	dicinfo[obj_dic_no].used = 0;
+***************
+*** 310,316 ****
+--- 352,376 ----
+  	    mrph2_t mrph;
+  	    rslt[0]='\0';	/*辞書引き結果変数を初期化*/
+  	    printf("DIC No. %d   \"%s\"\n",i,pat_filename[i]);
++ 
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	/*  ascii 文字が混在していたら弾く  */
++ 	    arglen = strlen(arg);
++ 	    a = arg;
++ 	    j = 0;
++ 	    for(; *a ;a++) {
++ 	        if (*a < 0x80) break;
++ 	        j++;
++ 	    }
++ 	    if ( j == arglen ) {
++ 	        (void)pat_search_exact(dic_file[i],arg, &tree_top[i],rslt);
++ 	    } else {
++ 	        rslt[0]= 0;	/* ascii 文字が混在していたら Not Found を返す */
++ 	        rslt[1]='\0';
++ 	    }
++ #else			/* ! OS/2 emx gcc */
+  	    (void)pat_search_exact(dic_file[i],arg, &tree_top[i],rslt);
++ #endif			/* ! OS/2 emx gcc */
+  	    if(!rslt[0]) printf("Not Found.\n");
+  	    else {
+  		char *pbuf;
+***************
+*** 401,410 ****
+--- 461,480 ----
+      FILE *fp_in, *fp_out;
+  {
+      char line[CHA_INPUT_SIZE];
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++     int isterm;
++ 
++     isterm = _isterm(fileno(fp_in));
++ #endif			/* OS/2 emx gcc */
+  
+      if (cha_fgets(line, sizeof(line), fp_in) == NULL)
+        return 1;
+  
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++     if ((isterm) && (!(strncmp(line, ".QUIT",5))))
++       return 1;
++ #endif			/* OS/2 emx gcc */
++ 
+      return chasen_sparse_main(line, fp_out);
+  }
+  /*
+***************
+*** 487,493 ****
+--- 557,567 ----
+  	sprintf(filename, "%s.int", pat_filename[num]);
+  
+  	/* .chasenrc を読み込み中なので cha_fopen は使わない */
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	if ((dic_file[num] = fopen(filename, "rb")) == NULL)
++ #else			/* ! OS/2 emx gcc */
+  	if ((dic_file[num] = fopen(filename, "r")) == NULL)
++ #endif			/* ! OS/2 emx gcc */
+  	  cha_exit_perror(filename);
+  
+  	sprintf(filename, "%s.pat", pat_filename[num]);
+*** ../chasen1.51/lib/chalib.h	Tue Jun 24 04:48:30 1997
+--- ./lib/chalib.h	Fri Jun 26 17:59:56 1998
+***************
+*** 98,100 ****
+--- 98,107 ----
+  extern char *fget_line();
+  extern char *jfgets();
+  
++ #ifdef	__EMX__	/* OS/2 emx gcc */
++ #include <process.h>
++ #define	strcasecmp	stricmp
++ #define	strncasecmp	strnicmp
++ extern char inpcd[];
++ extern int outcd_is_SJIS;
++ #endif	/* OS/2 emx gcc */
+*** ../chasen1.51/lib/getopt.c	Mon Jul 28 16:56:56 1997
+--- ./lib/getopt.c	Mon Jun 22 10:13:36 1998
+***************
+*** 76,82 ****
+--- 76,86 ----
+      char **argv;
+      FILE *fp;
+  {
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++     return cha_getopt(argv, "sP:D:RabmpdvfecMF:i:o:jr:w:ChV", fp);
++ #else			/* ! OS/2 emx gcc */
+      return cha_getopt(argv, "sP:D:RabmpdvfecMF:jr:w:ChV", fp);
++ #endif			/* ! OS/2 emx gcc */
+  }
+  
+  #ifdef TEST
+*** ../chasen1.51/lib/iotool.c	Wed Jul  2 07:21:16 1997
+--- ./lib/iotool.c	Mon Jun 22 16:18:40 1998
+***************
+*** 18,26 ****
+--- 18,30 ----
+  #ifdef _WIN32
+  #define RCFILE "\\chasenrc"
+  #else
++ #ifdef __EMX__
++ #define RCFILE "\\.chasenrc"
++ #else
+  #define RCFILE "/.chasenrc"
+  #endif
+  #endif
++ #endif
+  #define OLDRCFILE "/.jumanrc"
+  
+  int LineNo, LineNoForError;
+***************
+*** 37,43 ****
+   *
+   *	progpath is used in cha_exit() and cha_exit_file()
+   ***********************************************************************/
+! #ifdef _WIN32
+  static void which(filename, path)
+      char *filename;
+      char *path;
+--- 41,47 ----
+   *
+   *	progpath is used in cha_exit() and cha_exit_file()
+   ***********************************************************************/
+! #if defined(_WIN32) || defined(__EMX__)
+  static void which(filename, path)
+      char *filename;
+      char *path;
+***************
+*** 47,53 ****
+--- 51,61 ----
+      
+      strcpy(path, ".\\");
+      strcat(path, filename);
++ #ifdef	__EMX__	/*  EMX  */
++     if (fopen(path, "rb") != NULL) return;
++ #else	/* WIN32  */
+      if (fopen(path, "r") != NULL) return;
++ #endif	/* WIN32  */
+      
+      ps = getenv("PATH");
+  
+***************
+*** 62,82 ****
+  	    if (pe[-1] != '\\')
+  	      strcat(path, "\\");
+  	    strcat(path, filename);
+  	    if (fopen(path, "r") != NULL) return;
+  	    ps = pe + 1;
+  	}
+      }
+  }
+! #endif /* _WIN32 */
+  
+  void set_progpath(path)
+      char *path;
+  {
+! #ifdef _WIN32
+!     if (strchr(argv0, '\\') != NULL)
+  #endif
+        strcpy(progpath, path);
+! #ifdef _WIN32
+      else
+        which("chasen.exe", progpath);
+  #endif
+--- 70,94 ----
+  	    if (pe[-1] != '\\')
+  	      strcat(path, "\\");
+  	    strcat(path, filename);
++ #ifdef	__EMX__	/*  EMX  */
++ 	    if (fopen(path, "rb") != NULL) return;
++ #else	/* WIN32  */
+  	    if (fopen(path, "r") != NULL) return;
++ #endif	/* WIN32  */
+  	    ps = pe + 1;
+  	}
+      }
+  }
+! #endif /* _WIN32  or  __EMX__ */
+  
+  void set_progpath(path)
+      char *path;
+  {
+! #if defined(_WIN32) || defined(__EMX__)
+!     if (strchr(path, '\\') != NULL)
+  #endif
+        strcpy(progpath, path);
+! #if defined(_WIN32) || defined(__EMX__)
+      else
+        which("chasen.exe", progpath);
+  #endif
+***************
+*** 391,397 ****
+      }
+  #endif
+  
+! #ifdef _WIN32
+      strcpy(chasenrc_path, progpath);
+      strcpy(strrchr(chasenrc_path, '\\'), RCFILE);
+      if ((fp = cha_fopen(chasenrc_path, "r", -1)) != NULL)
+--- 403,409 ----
+      }
+  #endif
+  
+! #if defined(_WIN32) || defined(__EMX__)
+      strcpy(chasenrc_path, progpath);
+      strcpy(strrchr(chasenrc_path, '\\'), RCFILE);
+      if ((fp = cha_fopen(chasenrc_path, "r", -1)) != NULL)
+*** ../chasen1.51/lib/jfgets.c	Mon Jul  7 17:03:10 1997
+--- ./lib/jfgets.c	Fri Jun 26 20:36:56 1998
+***************
+*** 11,16 ****
+--- 11,19 ----
+   *
+   */
+  
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ #include "chalib.h"
++ #endif			/* OS/2 emx gcc */
+  
+  #include <stdio.h>
+  #include <string.h>
+***************
+*** 70,75 ****
+--- 73,147 ----
+  }
+  #endif
+  
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ /*
++ ------------------------------------------------------------------------------
++ 	added	1998/06/26/Thr	Kaz SHiMZ (Infosys Div. SFC)
++ ------------------------------------------------------------------------------
++ */
++ static
++ char
++ judge_inpcd(ibuffer)
++      unsigned char *ibuffer;
++ {
++   register unsigned char *p;
++   register int esc;
++   char jis  = 'j';
++   char euc  = 'e';
++   char sjis = 's';
++ 
++   esc      = 0;
++ 
++   for(p=ibuffer; *p; p++) {
++ 
++     /*  jis (iso-2022-jp) ?  */
++ 
++     if(*p==0x1b) {
++       esc = 1;
++     }
++     else if(esc==1) {
++       if(*p=='$')      esc = 2;  /* ESC $ */
++       else if(*p=='(') esc = 12; /* ESC ( */
++       else             esc = 0;
++     }
++     else if(esc) {
++       /* Translation */
++       if(esc== 2 && *p=='@')    return jis; /* ESC $ @ */
++       if(esc== 2 && *p=='B')    return jis; /* ESC $ B */
++       if(esc==12 && *p=='B')    return jis; /* ESC ( B */
++       if(esc==12 && *p=='J')    return jis; /* ESC ( J */
++ 
++       /* Give up to parse escape sequence */
++       esc=0;
++     }
++ 
++     /*  euc-jp ?  or  shift_jis ?  */
++ 
++     if (*p>=0x81 && *p <= 0x9f) {
++         if ((*(p+1)>=0x40 && *(p+1) <= 0x7e) || (*(p+1)>=0x80 && *(p+1) <= 0xfc))  return sjis;
++     }
++ 
++     if (*p>=0xa1 && *p <= 0xdf) {
++         if (*(p+1)>=0xe0 && *(p+1) <= 0xfe)  return euc;
++     }
++ 
++     if (*p>=0xe0 && *p <= 0xfc) {
++         if ((*(p+1)>=0x40 && *(p+1) <= 0x7e) || (*(p+1)>=0x80 && *(p+1) <= 0x9f)) {
++             return sjis;
++         }
++         else if (*(p+1)>=0xfd && *(p+1) <= 0xfe) {
++             return euc;
++         }
++     }
++ 
++     if (*p>=0xfd && *p <= 0xfe) {
++         if (*(p+1)>=0xa1 && *(p+1) <= 0xfe)  return euc;
++     }
++   }
++   return euc;   /*  default is euc  */
++ }
++ #endif			/* OS/2 emx gcc */
++ 
+  static
+  int
+  jistoeuc(ibuffer, obuffer)
+***************
+*** 343,348 ****
+--- 415,432 ----
+  #ifdef KOCHA2
+    ks2jaso(tmp, buffer);
+  #else
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++   if (tmp != NULL) {
++       if (!(strcasecmp(inpcd, "SJIS"))) {
++           sjis2euc(tmp);
++       } 
++       else if ((!(strcasecmp(inpcd, "JIS"))) || (!(strcasecmp(inpcd, "EUC")))) {
++       }
++       else if (judge_inpcd(tmp) == 's') {
++           sjis2euc(tmp);
++       }
++   }
++ #endif			/* OS/2 emx gcc */
+    jistoeuc(tmp, buffer);
+  #endif
+  #if 0
+*** ../chasen1.51/lib/pat.h	Tue May 27 06:12:58 1997
+--- ./lib/pat.h	Sat Jun 13 15:50:54 1998
+***************
+*** 37,43 ****
+  #define MAX_DIC_NUMBER 5 /* 同時に使える辞書の数の上限 (ChaSen) */
+  #define SIKII_BIT 16  /* 文字と文字の区切りは何ビット目? (8 or 16) */
+  
+! #if !defined(_WIN32)
+  #define O_BINARY 0
+  #endif
+  
+--- 37,43 ----
+  #define MAX_DIC_NUMBER 5 /* 同時に使える辞書の数の上限 (ChaSen) */
+  #define SIKII_BIT 16  /* 文字と文字の区切りは何ビット目? (8 or 16) */
+  
+! #if !defined(_WIN32) && !defined(__EMX__)
+  #define O_BINARY 0
+  #endif
+  
+*** ../chasen1.51/lib/print.c	Mon Jul  7 23:41:10 1997
+--- ./lib/print.c	Fri Jun 26 20:40:44 1998
+***************
+*** 245,250 ****
+--- 245,257 ----
+  
+      path = Hinsi[hinsi].path;
+      for (i = 0; ; i++) {
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++ 	if (outcd_is_SJIS) {
++ 	    if (Hinsi[*path].name != NULL) {
++ 	        euc2sjis(Hinsi[*path].name);
++ 	    }
++ 	}
++ #endif			/* OS/2 emx gcc */
+  	cha_puts(Hinsi[*path].name, cha_output);
+  	if (!*++path || i == n)
+  	  break;
+***************
+*** 318,323 ****
+--- 325,338 ----
+  {
+      char *field = width_str;
+      int field_len, word_len;
++ 
++ #ifdef	__EMX__		/* OS/2 emx gcc */
++     if (outcd_is_SJIS) {
++         if (word != NULL) {
++             word = euc2sjis1(word);
++         }
++     }
++ #endif			/* OS/2 emx gcc */
+  
+      if (width_str == NULL) {
+  	cha_puts(word, cha_output);
+*** ../chasen1.51/lib/zentohan.c	Thu May 15 02:06:16 1997
+--- ./lib/zentohan.c	Fri Jun 26 17:25:24 1998
+***************
+*** 95,101 ****
+      return str_buffer;
+  }
+  
+! #ifdef SJIS
+  
+  /***********************************************************************
+   *  euc->sjis, sjis->euc hankakukana->zenkaku code translation 
+--- 95,101 ----
+      return str_buffer;
+  }
+  
+! #if defined(SJIS) || defined(__EMX__)
+  
+  /***********************************************************************
+   *  euc->sjis, sjis->euc hankakukana->zenkaku code translation 
+***************
+*** 133,150 ****
+      for(s=str;*s;s++){
+          if (*s>=0x80){
+              if (*s & 1) {
+!                 *(s+1) -= 0x61;
+!                 if (*(s+1) >= 0x7f) (*(s+1))++;
+!             } else *(s+1) -= 2;
+  
+!             *s = ((*s + 1) >> 1) + 0x30;
+              if (*s >= 0xa0) *s += 0x40;
+              s++;
+          }
+      }
+      return str;
+  }
+  
+  
+  static void sjis2euc1(hi, lo)
+      unsigned char *hi, *lo;
+--- 133,161 ----
+      for(s=str;*s;s++){
+          if (*s>=0x80){
+              if (*s & 1) {
+!                 if ((*(s+1)) >= 0xe0) ((*(s+1)) -= 0x60);
+!                 else (*(s+1)) -= 0x61;
+!                 (*s)++;
+!             }  else  (*(s+1)) -= 0x02 ;
+  
+!             *s = ((*s) >> 1) + 0x30;
+              if (*s >= 0xa0) *s += 0x40;
++ 
+              s++;
+          }
+      }
+      return str;
+  }
+  
++ unsigned char *euc2sjis1(str)
++     unsigned char *str;
++ {
++     unsigned char *s;
++     static unsigned char tmp[2000];
++ 
++     strcpy(tmp, str);
++     return euc2sjis(tmp);
++ }
+  
+  static void sjis2euc1(hi, lo)
+      unsigned char *hi, *lo;
+***************
+*** 174,179 ****
+--- 185,196 ----
+      unsigned char *p, *s;
+      int dakuten;
+  
++ #ifdef	__EMX__		/* on OS/2 emx gcc , source code is wtitten in EUC */
++     unsigned char *tmpstr;
++ 
++     tmpstr = euc2sjis1(hankaku);
++ #endif			/* OS/2 emx gcc */
++ 
+      p = ato;
+      s = moto;
+      if (*(s+1) == 0xde && 
+***************
+*** 183,190 ****
+--- 200,212 ----
+        dakuten = 2;
+      else
+        dakuten = 0;
++ #ifdef	__EMX__		/* on OS/2 emx gcc , source code is wtitten in EUC */
++     *p++ = tmpstr[(*s - 0xa1) * 2];
++     *p++ = tmpstr[(*s - 0xa1) * 2 + 1] + dakuten;
++ #else
+      *p++ = hankaku[(*s - 0xa1) * 2];
+      *p++ = hankaku[(*s - 0xa1) * 2 + 1] + dakuten;
++ #endif			/* OS/2 emx gcc */
+      if (dakuten){
+  	s++;
+      }
+*** ../chasen1.51/mkchadic/Makefile	Sun Jun 15 22:50:52 1997
+--- ./mkchadic/Makefile	Mon Jun 15 20:10:56 1998
+***************
+*** 4,10 ****
+  
+  CP      = cp
+  MV      = mv -f
+! SHELL   = /bin/sh
+  LIBDIR  = /usr/local/lib/chasen
+  
+  MKDICDIR = $(LIBDIR)/mkchadic
+--- 4,10 ----
+  
+  CP      = cp
+  MV      = mv -f
+! SHELL   = sh.exe
+  LIBDIR  = /usr/local/lib/chasen
+  
+  MKDICDIR = $(LIBDIR)/mkchadic
+***************
+*** 18,52 ****
+  SORTDICOBJS = sortdic.o
+  CONVGRAMOBJS = convgram.o
+  PATOBJS     = interface.o morph.o
+! EXES = makemat sortdic convgram pattool makeint transdic
+  
+  .c.o:
+! 	$(CC) $(CFLAGS) $(INCS) $(DEFS) -c -o $@ $<
+  
+  .y.o:
+  	$(YACC) $<
+! 	$(CC) $(CFLAGS) $(INCS) $(DEFS) -c y.tab.c
+  	$(MV) y.tab.o $@ 
+  	$(RM) y.tab.c
+  
+  all: $(EXES)
+  
+! makeint: $(MAKEINTOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(MAKEINTOBJS) $(CHALIB)
+  
+! makemat: $(MAKEMATOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(MAKEMATOBJS) $(CHALIB)
+  
+! transdic: $(TRANSDICOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(TRANSDICOBJS) $(CHALIB)
+  
+! sortdic: $(SORTDICOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(SORTDICOBJS) $(CHALIB)
+  
+! convgram: $(CONVGRAMOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(CONVGRAMOBJS) $(CHALIB)
+  
+! pattool: $(PATOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(PATOBJS) $(CHALIB)
+  
+  $(MAKEINTOBJS) $(MAKEMATOBJS) $(SORTDICOBJS) $(CONVGRAMOBJS): $(LIBDIR)/chadic.h
+--- 18,52 ----
+  SORTDICOBJS = sortdic.o
+  CONVGRAMOBJS = convgram.o
+  PATOBJS     = interface.o morph.o
+! EXES = makemat.exe sortdic.exe convgram.exe pattool.exe makeint.exe transdic.exe
+  
+  .c.o:
+! 	$(CC) $(CFLAGS) $(INCS) $(NO_MMAP) $(DEFS) -c -o $@ $<
+  
+  .y.o:
+  	$(YACC) $<
+! 	$(CC) $(CFLAGS) $(INCS) $(NO_MMAP) $(DEFS) -c y.tab.c
+  	$(MV) y.tab.o $@ 
+  	$(RM) y.tab.c
+  
+  all: $(EXES)
+  
+! makeint.exe: $(MAKEINTOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(MAKEINTOBJS) $(CHALIB)
+  
+! makemat.exe: $(MAKEMATOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(MAKEMATOBJS) $(CHALIB)
+  
+! transdic.exe: $(TRANSDICOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(TRANSDICOBJS) $(CHALIB)
+  
+! sortdic.exe: $(SORTDICOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(SORTDICOBJS) $(CHALIB)
+  
+! convgram.exe: $(CONVGRAMOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(CONVGRAMOBJS) $(CHALIB)
+  
+! pattool.exe: $(PATOBJS) $(CHALIB)
+  	$(CC) $(LDFLAGS) -o $@ $(PATOBJS) $(CHALIB)
+  
+  $(MAKEINTOBJS) $(MAKEMATOBJS) $(SORTDICOBJS) $(CONVGRAMOBJS): $(LIBDIR)/chadic.h
+*** ../chasen1.51/mkchadic/transdic.y	Mon Jul 28 17:08:46 1997
+--- ./mkchadic/transdic.y	Sat Jun 13 14:46:32 1998
+***************
+*** 461,467 ****
+  	i = 0;
+  	uch = ch;
+  	/* 直前が 「\」 でない 「"」「'」 を探す。 */
+! #ifdef _WIN32
+  	for (i = 0, ch = getc(readfp);
+  	     (ch != uch || (tok[-1] == '\\' && tok[-2] < 0x80)) && ch != EOF;
+  	     i++, ch = getc(readfp)) {
+--- 461,467 ----
+  	i = 0;
+  	uch = ch;
+  	/* 直前が 「\」 でない 「"」「'」 を探す。 */
+! #if defined(_WIN32) || defined(__EMX__)
+  	for (i = 0, ch = getc(readfp);
+  	     (ch != uch || (tok[-1] == '\\' && tok[-2] < 0x80)) && ch != EOF;
+  	     i++, ch = getc(readfp)) {
